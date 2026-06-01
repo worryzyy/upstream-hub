@@ -321,8 +321,8 @@ func (s *Service) decryptSession(saved *storage.AuthSession) (*connector.AuthSes
 	}, nil
 }
 
-// TestLogin 手动测试登录：成功的话也会把 session 加密落库，方便后续 sync 直接复用，
-// 不至于白白浪费一次打码。失败仅写一条 monitor_logs。
+// TestLogin 手动测试登录：复用 login() 的完整流程（打码 → 登录 → 持久化 + monitor log + 进度事件），
+// 成功后 session 落库，下一次 sync 直接复用、不浪费打码额度。
 func (s *Service) TestLogin(ctx context.Context, channelID uint) error {
 	c, err := s.Channels.FindByID(channelID)
 	if err != nil {
@@ -336,30 +336,8 @@ func (s *Service) TestLogin(ctx context.Context, channelID uint) error {
 	if err != nil {
 		return err
 	}
-	if err := s.prepareTurnstile(ctx, c, resolved, conn); err != nil {
-		return err
-	}
-
-	started := time.Now()
-	session, err := conn.Login(ctx, resolved)
-	finished := time.Now()
-	_ = s.MonitorLogs.Append(&storage.MonitorLog{
-		ChannelID:    c.ID,
-		Job:          storage.MonitorJobLogin,
-		Success:      err == nil,
-		ErrorMessage: errString(err),
-		StartedAt:    started,
-		FinishedAt:   finished,
-	})
-	if err != nil {
-		_ = s.Channels.SetLastError(c.ID, err.Error())
-		return err
-	}
-	if err := s.persistSession(c.ID, session); err != nil {
-		return err
-	}
-	_ = s.Channels.SetLastError(c.ID, "")
-	return nil
+	_, err = s.login(ctx, c, resolved, conn)
+	return err
 }
 
 func errString(err error) string {

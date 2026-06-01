@@ -26,7 +26,7 @@ import { apiFetch } from "@/lib/api"
 import { useTriggerRefresh } from "@/lib/refresh-context"
 import { channelTypeLabel, money, relativeTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { syncChannelStream, type ProgressEvent } from "@/lib/sync-stream"
+import { syncChannelStream, testLoginStream, type ProgressEvent } from "@/lib/sync-stream"
 import type { Channel } from "@/lib/api-types"
 import { ChannelFormDialog } from "@/components/monitor/channel-form-dialog"
 
@@ -214,35 +214,44 @@ function SyncProgressStrip({ state }: { state: ChannelSyncState }) {
         state.fading ? "-translate-y-0.5 opacity-0" : "opacity-100",
       )}
     >
-      <ul className="space-y-1.5">
-        {steps.map((ev) => {
-          const running = ev.ok == null
-          const failed = ev.ok === false || ev.stage === "error"
-          const Icon = running ? Loader2 : failed ? XCircle : CheckCircle2
-          const tone = running ? "text-muted-foreground" : failed ? "text-danger" : "text-success"
-          return (
-            <li
-              key={ev.stage}
-              className="flex items-center gap-2 text-xs animate-in fade-in duration-200"
-            >
-              <Icon
-                className={cn("size-3.5 shrink-0", tone, running && "animate-spin")}
-              />
-              <span className="w-9 shrink-0 text-[11px] text-muted-foreground">
-                {stageLabel[ev.stage]}
-              </span>
-              <span
-                className={cn(
-                  "truncate",
-                  failed ? "text-danger" : running ? "text-foreground/80" : "text-foreground",
-                )}
+      {steps.length === 0 ? (
+        <div className="flex items-center gap-2 text-xs">
+          <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+          <span className="text-foreground/80">{"准备中…"}</span>
+        </div>
+      ) : (
+        <ul className="space-y-1.5">
+          {steps.map((ev) => {
+            // 终止态：stage=done 或 error；显式 ok=true / false 也算
+            const failed = ev.stage === "error" || ev.ok === false
+            const succeeded = ev.stage === "done" || ev.ok === true
+            const running = !failed && !succeeded
+            const Icon = running ? Loader2 : failed ? XCircle : CheckCircle2
+            const tone = running ? "text-muted-foreground" : failed ? "text-danger" : "text-success"
+            return (
+              <li
+                key={ev.stage}
+                className="flex items-center gap-2 text-xs animate-in fade-in duration-200"
               >
-                {ev.message}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
+                <Icon
+                  className={cn("size-3.5 shrink-0", tone, running && "animate-spin")}
+                />
+                <span className="w-9 shrink-0 text-[11px] text-muted-foreground">
+                  {stageLabel[ev.stage]}
+                </span>
+                <span
+                  className={cn(
+                    "truncate",
+                    failed ? "text-danger" : running ? "text-foreground/80" : "text-foreground",
+                  )}
+                >
+                  {ev.message}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }
@@ -296,7 +305,7 @@ export function ChannelCards() {
     setSyncState((s) => ({ ...s, [id]: fn(s[id] ?? emptySyncState()) }))
   }
 
-  async function startSync(channel: Channel) {
+  async function startStream(channel: Channel, action: "sync" | "test-login") {
     clearHideTimer(channel.id)
     patchSync(channel.id, () => ({
       running: true,
@@ -306,8 +315,9 @@ export function ChannelCards() {
       fading: false,
     }))
     let sawError = false
+    const stream = action === "sync" ? syncChannelStream : testLoginStream
     try {
-      await syncChannelStream(channel.id, {
+      await stream(channel.id, {
         onEvent: (ev) => {
           if (ev.stage === "error" || ev.ok === false) sawError = true
           patchSync(channel.id, (prev) => ({
@@ -326,13 +336,14 @@ export function ChannelCards() {
       if (ok) scheduleHide(channel.id)
     } catch (e) {
       const err = e as Error
+      const failureLabel = action === "sync" ? "同步失败" : "测试登录失败"
       patchSync(channel.id, (prev) => ({
         ...prev,
         running: false,
         finalOk: false,
         latest: {
           stage: "error",
-          message: err.message || "同步失败",
+          message: err.message || failureLabel,
           time: new Date().toISOString(),
         },
       }))
@@ -452,7 +463,7 @@ export function ChannelCards() {
                     size="sm"
                     className="gap-1 text-xs"
                     disabled={!!syncState[c.id]?.running}
-                    onClick={() => startSync(c)}
+                    onClick={() => startStream(c, "sync")}
                   >
                     <RefreshCw
                       className={cn("size-3", syncState[c.id]?.running && "animate-spin")}
@@ -463,12 +474,8 @@ export function ChannelCards() {
                     variant="outline"
                     size="sm"
                     className="gap-1 text-xs"
-                    disabled={busyAction === `test-${c.id}`}
-                    onClick={() =>
-                      withBusy(`test-${c.id}`, () =>
-                        apiFetch(`/channels/${c.id}/test-login`, { method: "POST" }),
-                      )
-                    }
+                    disabled={!!syncState[c.id]?.running}
+                    onClick={() => startStream(c, "test-login")}
                   >
                     <LogIn className="size-3" />
                     {"测试登录"}

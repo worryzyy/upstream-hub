@@ -161,11 +161,15 @@ func testLogin(c *gin.Context, d *Deps) {
 		fail(c, http.StatusBadRequest, err)
 		return
 	}
-	if err := d.ChannelSvc.TestLogin(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+
+	obs := setupSSE(c)
+	ctx := progress.WithObserver(c.Request.Context(), obs)
+
+	if err := d.ChannelSvc.TestLogin(ctx, id); err != nil {
+		progress.Fail(ctx, progress.StageError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	progress.OK(ctx, progress.StageDone, "登录测试成功")
 }
 
 func refreshBalance(c *gin.Context, d *Deps) {
@@ -238,6 +242,27 @@ func uintParam(c *gin.Context, name string) (uint, error) {
 	return uint(id), err
 }
 
+// setupSSE 给 ResponseWriter 设上 text/event-stream 头，返回一个就绪的 sseObserver。
+// 调用方接下来一般是：
+//
+//	obs := setupSSE(c)
+//	ctx := progress.WithObserver(c.Request.Context(), obs)
+//	// ... 业务逻辑里的 progress.Start / OK / Fail 会被实时 stream 出去 ...
+//	obs.Emit(progress.Event{Stage: progress.StageDone, Message: "完成"})
+func setupSSE(c *gin.Context) *sseObserver {
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no") // disable nginx-style proxy buffering
+	c.Writer.WriteHeader(http.StatusOK)
+
+	obs := &sseObserver{w: c.Writer}
+	if flusher, ok := c.Writer.(http.Flusher); ok {
+		obs.flush = flusher.Flush
+	}
+	return obs
+}
+
 // sseObserver 把 progress.Event 序列化成 SSE 格式写入 ResponseWriter。
 // 因为 gin 的 Handler 在一个 goroutine 中跑，而 emit 可能从下游同步 / 异步发起，
 // 这里加锁保证 writer 串行写。
@@ -295,18 +320,7 @@ func syncChannel(c *gin.Context, d *Deps) {
 		return
 	}
 
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("X-Accel-Buffering", "no") // disable nginx-style proxy buffering
-	c.Writer.WriteHeader(http.StatusOK)
-
-	flusher, _ := c.Writer.(http.Flusher)
-	obs := &sseObserver{w: c.Writer}
-	if flusher != nil {
-		obs.flush = flusher.Flush
-	}
-
+	obs := setupSSE(c)
 	ctx := progress.WithObserver(c.Request.Context(), obs)
 
 	// 串行执行：先余额，再倍率。任一步失败仍尝试下一个，但用 done 表示整体状态。
@@ -315,15 +329,12 @@ func syncChannel(c *gin.Context, d *Deps) {
 
 	switch {
 	case balErr != nil && rateErr != nil:
-		obs.Emit(progress.Event{
-			Stage:   progress.StageError,
-			Message: balErr.Error() + " | " + rateErr.Error(),
-		})
+		progress.Fail(ctx, progress.StageError, balErr.Error()+" | "+rateErr.Error())
 	case balErr != nil:
-		obs.Emit(progress.Event{Stage: progress.StageError, Message: balErr.Error()})
+		progress.Fail(ctx, progress.StageError, balErr.Error())
 	case rateErr != nil:
-		obs.Emit(progress.Event{Stage: progress.StageError, Message: rateErr.Error()})
+		progress.Fail(ctx, progress.StageError, rateErr.Error())
 	default:
-		obs.Emit(progress.Event{Stage: progress.StageDone, Message: "同步完成"})
+		progress.OK(ctx, progress.StageDone, "同步完成")
 	}
 }

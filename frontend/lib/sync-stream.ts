@@ -27,15 +27,15 @@ export interface SyncOptions {
 }
 
 /**
- * syncChannelStream 触发 /api/channels/:id/sync，逐条消费 SSE 事件。
- * 流读完返回；网络 / 业务错误会被以 ProgressEvent 形式抛给 onEvent，再 throw。
+ * streamSSE 通用 SSE 读取器：POST 指定 path，逐条消费 data 帧。
+ * 401 → 触发全局登出回调；其他非 2xx 抛错。
  */
-export async function syncChannelStream(
-  channelID: number,
+async function streamSSE(
+  path: string,
   { onEvent, signal }: SyncOptions,
 ): Promise<void> {
   const token = getToken()
-  const res = await fetch(`/api/channels/${channelID}/sync`, {
+  const res = await fetch(path, {
     method: "POST",
     headers: {
       Accept: "text/event-stream",
@@ -50,7 +50,7 @@ export async function syncChannelStream(
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "")
-    throw new Error(`sync 请求失败 (${res.status}): ${body || res.statusText}`)
+    throw new Error(`${path} 请求失败 (${res.status}): ${body || res.statusText}`)
   }
   if (!res.body) {
     throw new Error("浏览器不支持流式响应")
@@ -68,7 +68,6 @@ export async function syncChannelStream(
         return
       }
       buf += decoder.decode(value, { stream: true })
-      // 按 SSE 帧切：两次换行表示一帧结束
       let idx
       // eslint-disable-next-line no-cond-assign
       while ((idx = buf.indexOf("\n\n")) >= 0) {
@@ -83,7 +82,6 @@ export async function syncChannelStream(
 }
 
 function flushBlock(block: string, onEvent: (ev: ProgressEvent) => void) {
-  // 一帧可能包含多行；按 SSE 规范只关心以 "data:" 开头的行
   const lines = block.split("\n")
   const dataLines: string[] = []
   for (const line of lines) {
@@ -99,4 +97,14 @@ function flushBlock(block: string, onEvent: (ev: ProgressEvent) => void) {
   } catch {
     // 忽略不合法的帧
   }
+}
+
+/** 触发 /api/channels/:id/sync（余额 + 倍率）。 */
+export function syncChannelStream(channelID: number, options: SyncOptions) {
+  return streamSSE(`/api/channels/${channelID}/sync`, options)
+}
+
+/** 触发 /api/channels/:id/test-login（仅登录验证，session 落库以便后续 sync 复用）。 */
+export function testLoginStream(channelID: number, options: SyncOptions) {
+  return streamSSE(`/api/channels/${channelID}/test-login`, options)
 }
