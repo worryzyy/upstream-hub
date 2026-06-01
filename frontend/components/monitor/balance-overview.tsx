@@ -8,8 +8,22 @@ import { cn } from "@/lib/utils"
 
 function formatY(n: number) {
   if (n === 0) return "$0"
-  if (n >= 1000) return `$${(n / 1000).toFixed(0)}K`
-  return `$${n.toFixed(0)}`
+  if (n >= 1000) return `$${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`
+  if (n >= 100) return `$${n.toFixed(0)}`
+  return `$${n.toFixed(n >= 10 ? 1 : 2)}`
+}
+
+/**
+ * niceCeil 把最大值向上取整到一个"好看的"刻度，避免曲线贴顶。
+ * 例如 47 → 50；478 → 500；12,300 → 15,000。
+ */
+function niceCeil(n: number): number {
+  if (!Number.isFinite(n) || n <= 0) return 10
+  const padded = n * 1.15
+  const mag = Math.pow(10, Math.floor(Math.log10(padded)))
+  const norm = padded / mag
+  const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10
+  return step * mag
 }
 
 function formatDay(iso: string) {
@@ -42,7 +56,7 @@ export function BalanceOverview() {
   }))
 
   const channels = summary.data?.channels ?? []
-  const yMax = Math.max(15000, ...data.map((d) => d.balance)) * 1.1
+  const yMax = data.length > 0 ? niceCeil(Math.max(...data.map((d) => d.balance))) : 10
 
   return (
     <Card className="border border-border shadow-none">
@@ -51,7 +65,7 @@ export function BalanceOverview() {
         <span className="text-xs text-muted-foreground">{"最近 7 天"}</span>
       </CardHeader>
       <CardContent>
-        <div className="h-[240px] w-full">
+        <div className="h-60 w-full">
           {trend.loading ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{"加载中…"}</div>
           ) : data.length === 0 ? (

@@ -9,6 +9,7 @@ import { RefreshProvider } from '@/lib/refresh-context'
 import { AddChannelProvider } from '@/lib/add-channel-context'
 import { AuthGate } from '@/components/auth/auth-gate'
 import { AppShell } from '@/components/app-shell'
+import { Toaster } from '@/components/ui/sonner'
 import DashboardPage from '@/app/page'
 import CaptchaPage from '@/app/captcha-page'
 import NotificationsPage from '@/app/notifications-page'
@@ -34,6 +35,7 @@ createRoot(document.getElementById('root')!).render(
               </AddChannelProvider>
             </BrowserRouter>
           </RefreshProvider>
+          <Toaster richColors closeButton position="top-right" />
         </AuthGate>
       </AuthProvider>
     </ThemeProvider>

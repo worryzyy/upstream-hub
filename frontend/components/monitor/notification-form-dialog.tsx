@@ -663,7 +663,7 @@ function SubRowEditor({ row, channels, onChange, onRemove, disabled }: SubRowEdi
           disabled={disabled}
         >
           <SelectTrigger className="h-8 flex-1 text-xs">
-            <SelectValue placeholder="选择上游渠道" />
+            <SelectValue placeholder="选择渠道" />
           </SelectTrigger>
           <SelectContent>
             {channels.map((c) => (

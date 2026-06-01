@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import {
   CheckCircle2,
   ChevronDown,
@@ -21,6 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { useChannels, useChannelRates } from "@/lib/queries"
 import { apiFetch } from "@/lib/api"
 import { useTriggerRefresh } from "@/lib/refresh-context"
@@ -259,6 +261,7 @@ function SyncProgressStrip({ state }: { state: ChannelSyncState }) {
 export function ChannelCards() {
   const { data: channels, loading } = useChannels()
   const refresh = useTriggerRefresh()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [editing, setEditing] = useState<Channel | null>(null)
   const [creating, setCreating] = useState(false)
   const [busyAction, setBusyAction] = useState<string | null>(null)
@@ -360,8 +363,7 @@ export function ChannelCards() {
       refresh()
     } catch (e) {
       const err = e as Error
-      // 简易反馈：弹个原生 alert，后续可改成 toast。
-      alert(err.message || "操作失败")
+      toast.error(err.message || "操作失败")
     } finally {
       setBusyAction(null)
     }
@@ -371,12 +373,12 @@ export function ChannelCards() {
     <section>
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-base font-semibold text-foreground">{"上游通道"}</h2>
+          <h2 className="text-base font-semibold text-foreground">{"渠道"}</h2>
           <p className="text-xs text-muted-foreground">{"实时健康、余额与同步状态"}</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">
-            {channels?.length ?? 0}{" 个通道"}
+            {channels?.length ?? 0}{" 个渠道"}
           </span>
           <Button
             size="sm"
@@ -398,7 +400,7 @@ export function ChannelCards() {
         </p>
       ) : !channels || channels.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
-          <p className="text-sm text-muted-foreground">{"还没有任何上游渠道。"}</p>
+          <p className="text-sm text-muted-foreground">{"还没有任何渠道。"}</p>
           <Button
             size="sm"
             className="mt-3 gap-1.5"
@@ -522,8 +524,14 @@ export function ChannelCards() {
                     size="sm"
                     className="gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                     disabled={busyAction === `delete-${c.id}`}
-                    onClick={() => {
-                      if (!confirm(`确认删除渠道 ${c.name}？`)) return
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: `删除渠道 ${c.name}？`,
+                        description: "删除后该渠道的余额历史、倍率快照与登录凭据都将一并清除，且无法恢复。",
+                        confirmLabel: "删除",
+                        destructive: true,
+                      })
+                      if (!ok) return
                       void withBusy(`delete-${c.id}`, () =>
                         apiFetch(`/channels/${c.id}`, { method: "DELETE" }),
                       )
@@ -547,6 +555,8 @@ export function ChannelCards() {
         }}
         channel={editing}
       />
+
+      {confirmDialog}
     </section>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { useCaptchaConfigs, useDashboardSummary, useNotificationChannels } from "@/lib/queries"
 import { apiFetch } from "@/lib/api"
 import { useTriggerRefresh } from "@/lib/refresh-context"
@@ -83,19 +85,27 @@ const captchaTypeLabel: Record<string, string> = {
 export function CaptchaStatus() {
   const { data, loading } = useCaptchaConfigs()
   const refresh = useTriggerRefresh()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [editing, setEditing] = useState<CaptchaConfig | null>(null)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<number | null>(null)
 
   async function handleDelete(c: CaptchaConfig) {
-    if (!confirm(`确认删除 ${c.name}？`)) return
+    const ok = await confirm({
+      title: `删除打码配置 ${c.name}？`,
+      description: "删除后引用此配置的渠道将无法自动过码，需要重新指定打码 provider。",
+      confirmLabel: "删除",
+      destructive: true,
+    })
+    if (!ok) return
     setBusy(c.id)
     try {
       await apiFetch(`/captcha-configs/${c.id}`, { method: "DELETE" })
+      toast.success(`已删除 ${c.name}`)
       refresh()
     } catch (e) {
       const err = e as Error
-      alert(err.message || "删除失败")
+      toast.error(err.message || "删除失败")
     } finally {
       setBusy(null)
     }
@@ -183,6 +193,8 @@ export function CaptchaStatus() {
         }}
         config={editing}
       />
+
+      {confirmDialog}
     </Card>
   )
 }
@@ -200,6 +212,7 @@ export function NotificationStatus() {
   const { data, loading } = useNotificationChannels()
   const summary = useDashboardSummary()
   const refresh = useTriggerRefresh()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [editing, setEditing] = useState<NotificationChannel | null>(null)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<number | null>(null)
@@ -209,14 +222,21 @@ export function NotificationStatus() {
   const recentFailed = totalLogs.filter((l) => !l.success).length
 
   async function handleDelete(c: NotificationChannel) {
-    if (!confirm(`确认删除 ${c.name}？`)) return
+    const ok = await confirm({
+      title: `删除通知渠道 ${c.name}？`,
+      description: "删除后系统将不再向该渠道推送告警，历史发送记录会保留以便审计。",
+      confirmLabel: "删除",
+      destructive: true,
+    })
+    if (!ok) return
     setBusy(c.id)
     try {
       await apiFetch(`/notifications/channels/${c.id}`, { method: "DELETE" })
+      toast.success(`已删除 ${c.name}`)
       refresh()
     } catch (e) {
       const err = e as Error
-      alert(err.message || "删除失败")
+      toast.error(err.message || "删除失败")
     } finally {
       setBusy(null)
     }
@@ -230,14 +250,14 @@ export function NotificationStatus() {
         { method: "POST" },
       )
       if (res.ok) {
-        alert(`已发送测试消息到 ${c.name}`)
+        toast.success(`已发送测试消息到 ${c.name}`)
       } else {
-        alert(`测试失败：${res.error ?? "未知错误"}`)
+        toast.error(`测试失败：${res.error ?? "未知错误"}`)
       }
       refresh()
     } catch (e) {
       const err = e as Error
-      alert(err.message || "测试失败")
+      toast.error(err.message || "测试失败")
     } finally {
       setBusy(null)
     }
@@ -353,6 +373,8 @@ export function NotificationStatus() {
         }}
         channel={editing}
       />
+
+      {confirmDialog}
     </Card>
   )
 }
