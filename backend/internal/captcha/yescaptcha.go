@@ -12,44 +12,43 @@ import (
 )
 
 func init() {
-	Register(storage.CaptchaAntiCaptcha, func(c Config) Provider { return newAntiCaptcha(c) })
+	Register(storage.CaptchaYesCaptcha, func(c Config) Provider { return newYesCaptcha(c) })
 }
 
-// antiCaptcha 对接 https://anti-captcha.com 的 TurnstileTaskProxyless。
+// yesCaptcha 对接 https://yescaptcha.com 的 TurnstileTaskProxyless。
 //
-// 流程与 2Captcha / CapSolver 完全一致（这套 createTask + getTaskResult 协议本来就是 AntiCaptcha 最早定的，
-// 两家后续都按这个形状抄）：
+// 协议跟 2Captcha / AntiCaptcha 完全同源（同样 createTask + getTaskResult JSON API）：
 //
 //	POST /createTask     -> { errorId, taskId }
 //	POST /getTaskResult  -> { status: "ready", solution: { token } } 或 status: "processing"
 //
 // 在拿到 ready 之前每 2 秒轮询一次，最多 ~120 秒。
-type antiCaptcha struct {
+type yesCaptcha struct {
 	cfg  Config
 	http *resty.Client
 	base string
 }
 
-func newAntiCaptcha(c Config) *antiCaptcha {
+func newYesCaptcha(c Config) *yesCaptcha {
 	base := c.Endpoint
 	if base == "" {
-		base = "https://api.anti-captcha.com"
+		base = "https://api.yescaptcha.com"
 	}
-	return &antiCaptcha{
+	return &yesCaptcha{
 		cfg:  c,
 		http: resty.New().SetTimeout(30 * time.Second),
 		base: base,
 	}
 }
 
-type antiCaptchaCreateResp struct {
+type yesCaptchaCreateResp struct {
 	ErrorID          int    `json:"errorId"`
 	ErrorCode        string `json:"errorCode"`
 	ErrorDescription string `json:"errorDescription"`
-	TaskID           any    `json:"taskId"` // AntiCaptcha 文档里给的是数字，但稳妥起见用 any 兼容
+	TaskID           any    `json:"taskId"` // 兼容 string / number
 }
 
-type antiCaptchaResultResp struct {
+type yesCaptchaResultResp struct {
 	ErrorID          int    `json:"errorId"`
 	ErrorCode        string `json:"errorCode"`
 	ErrorDescription string `json:"errorDescription"`
@@ -59,12 +58,12 @@ type antiCaptchaResultResp struct {
 	} `json:"solution"`
 }
 
-func (p *antiCaptcha) SolveTurnstile(ctx context.Context, siteKey, pageURL string) (string, error) {
+func (p *yesCaptcha) SolveTurnstile(ctx context.Context, siteKey, pageURL string) (string, error) {
 	if p.cfg.APIKey == "" {
-		return "", errors.New("anticaptcha: api key is empty")
+		return "", errors.New("yescaptcha: api key is empty")
 	}
 	if siteKey == "" {
-		return "", errors.New("anticaptcha: siteKey is empty")
+		return "", errors.New("yescaptcha: siteKey is empty")
 	}
 
 	taskID, err := p.createTask(ctx, siteKey, pageURL)
@@ -82,7 +81,7 @@ func (p *antiCaptcha) SolveTurnstile(ctx context.Context, siteKey, pageURL strin
 			return "", ctx.Err()
 		case <-ticker.C:
 			if time.Now().After(deadline) {
-				return "", errors.New("anticaptcha: timed out waiting for solution")
+				return "", errors.New("yescaptcha: timed out waiting for solution")
 			}
 			token, ready, err := p.fetchResult(ctx, taskID)
 			if err != nil {
@@ -95,7 +94,7 @@ func (p *antiCaptcha) SolveTurnstile(ctx context.Context, siteKey, pageURL strin
 	}
 }
 
-func (p *antiCaptcha) createTask(ctx context.Context, siteKey, pageURL string) (string, error) {
+func (p *yesCaptcha) createTask(ctx context.Context, siteKey, pageURL string) (string, error) {
 	body := map[string]any{
 		"clientKey": p.cfg.APIKey,
 		"task": map[string]any{
@@ -110,19 +109,19 @@ func (p *antiCaptcha) createTask(ctx context.Context, siteKey, pageURL string) (
 		SetBody(body).
 		Post(p.base + "/createTask")
 	if err != nil {
-		return "", fmt.Errorf("anticaptcha createTask http: %w", err)
+		return "", fmt.Errorf("yescaptcha createTask http: %w", err)
 	}
-	var r antiCaptchaCreateResp
+	var r yesCaptchaCreateResp
 	if err := json.Unmarshal(resp.Body(), &r); err != nil {
-		return "", fmt.Errorf("anticaptcha createTask decode: %w", err)
+		return "", fmt.Errorf("yescaptcha createTask decode: %w", err)
 	}
 	if r.ErrorID != 0 || r.TaskID == nil {
-		return "", fmt.Errorf("anticaptcha createTask: %s %s", r.ErrorCode, r.ErrorDescription)
+		return "", fmt.Errorf("yescaptcha createTask: %s %s", r.ErrorCode, r.ErrorDescription)
 	}
 	switch v := r.TaskID.(type) {
 	case string:
 		if v == "" {
-			return "", errors.New("anticaptcha createTask: empty taskId")
+			return "", errors.New("yescaptcha createTask: empty taskId")
 		}
 		return v, nil
 	case float64:
@@ -132,7 +131,7 @@ func (p *antiCaptcha) createTask(ctx context.Context, siteKey, pageURL string) (
 	}
 }
 
-func (p *antiCaptcha) fetchResult(ctx context.Context, taskID string) (string, bool, error) {
+func (p *yesCaptcha) fetchResult(ctx context.Context, taskID string) (string, bool, error) {
 	resp, err := p.http.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
@@ -142,18 +141,18 @@ func (p *antiCaptcha) fetchResult(ctx context.Context, taskID string) (string, b
 		}).
 		Post(p.base + "/getTaskResult")
 	if err != nil {
-		return "", false, fmt.Errorf("anticaptcha getTaskResult http: %w", err)
+		return "", false, fmt.Errorf("yescaptcha getTaskResult http: %w", err)
 	}
-	var r antiCaptchaResultResp
+	var r yesCaptchaResultResp
 	if err := json.Unmarshal(resp.Body(), &r); err != nil {
-		return "", false, fmt.Errorf("anticaptcha getTaskResult decode: %w", err)
+		return "", false, fmt.Errorf("yescaptcha getTaskResult decode: %w", err)
 	}
 	if r.ErrorID != 0 {
-		return "", false, fmt.Errorf("anticaptcha getTaskResult: %s %s", r.ErrorCode, r.ErrorDescription)
+		return "", false, fmt.Errorf("yescaptcha getTaskResult: %s %s", r.ErrorCode, r.ErrorDescription)
 	}
 	if r.Status == "ready" {
 		if r.Solution.Token == "" {
-			return "", false, errors.New("anticaptcha: ready but empty token")
+			return "", false, errors.New("yescaptcha: ready but empty token")
 		}
 		return r.Solution.Token, true, nil
 	}

@@ -17,15 +17,15 @@ export function MultiplierChanges() {
     return m
   }, [channels.data])
 
-  const items = (summary.data?.recent_rate_changes ?? []).slice(0, 6)
+  const items = summary.data?.recent_rate_changes ?? []
 
   return (
-    <Card className="border border-border shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className="max-h-[25rem] min-h-0 overflow-hidden border border-border shadow-none lg:h-[25rem]">
+      <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-2">
         <CardTitle className="text-base font-semibold">{"最近倍率变动"}</CardTitle>
         <span className="text-xs text-muted-foreground">{items.length > 0 ? `${items.length} 条` : ""}</span>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent className="min-h-0 flex-1 overflow-y-auto px-0">
         {summary.loading ? (
           <p className="px-6 py-6 text-xs text-muted-foreground">{"加载中…"}</p>
         ) : items.length === 0 ? (
@@ -62,7 +62,7 @@ export function MultiplierChanges() {
                         {chType ? <span className="ml-1 opacity-60">{channelTypeLabel(chType)}</span> : null}
                       </span>
                     </div>
-                    <div className="mt-1.5 flex items-center gap-6 text-xs">
+                    <div className="mt-1.5 flex items-center text-xs">
                       <div>
                         <span className="text-muted-foreground">{"倍率"}</span>
                         <p className="mt-0.5 tabular-nums">
@@ -75,18 +75,6 @@ export function MultiplierChanges() {
                           </span>
                         </p>
                       </div>
-                      {(m.old_completion_ratio != null || m.new_completion_ratio != null) ? (
-                        <div>
-                          <span className="text-muted-foreground">{"补全倍率"}</span>
-                          <p className="mt-0.5 tabular-nums">
-                            <span className="text-muted-foreground">
-                              {m.old_completion_ratio == null ? "—" : m.old_completion_ratio.toFixed(2)}
-                            </span>
-                            <span className="mx-1 text-muted-foreground">{"→"}</span>
-                            <span className="font-medium">{(m.new_completion_ratio ?? 0).toFixed(2)}</span>
-                          </p>
-                        </div>
-                      ) : null}
                     </div>
                   </div>
 

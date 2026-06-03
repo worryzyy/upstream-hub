@@ -79,7 +79,7 @@ const captchaTypeLabel: Record<string, string> = {
   capsolver: "CapSolver",
   "2captcha": "2Captcha",
   anticaptcha: "AntiCaptcha",
-  custom: "自定义",
+  yescaptcha: "YesCaptcha",
 }
 
 export function CaptchaStatus() {
