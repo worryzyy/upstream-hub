@@ -85,7 +85,7 @@ export function CaptchaFormDialog({ open, onOpenChange, config }: CaptchaFormDia
           body: JSON.stringify(body),
         })
       } else {
-        if (!form.api_key && form.type !== "custom") {
+        if (!form.api_key) {
           throw new Error("新建时必须填写 API Key")
         }
         await apiFetch(`/captcha-configs`, {
@@ -107,8 +107,8 @@ export function CaptchaFormDialog({ open, onOpenChange, config }: CaptchaFormDia
   const placeholders: Record<CaptchaProviderType, { key: string; endpoint?: string }> = {
     "2captcha": { key: "2Captcha clientKey", endpoint: "https://api.2captcha.com（留空走默认）" },
     capsolver: { key: "CapSolver clientKey", endpoint: "https://api.capsolver.com（留空走默认）" },
-    anticaptcha: { key: "Anti-Captcha API key", endpoint: "（暂未实现）" },
-    custom: { key: "自定义服务的 token / 凭据", endpoint: "https://your-service/solve" },
+    anticaptcha: { key: "Anti-Captcha clientKey", endpoint: "https://api.anti-captcha.com（留空走默认）" },
+    yescaptcha: { key: "YesCaptcha clientKey", endpoint: "https://api.yescaptcha.com（留空走默认）" },
   }
 
   return (
@@ -147,8 +147,8 @@ export function CaptchaFormDialog({ open, onOpenChange, config }: CaptchaFormDia
               <SelectContent>
                 <SelectItem value="2captcha">2Captcha</SelectItem>
                 <SelectItem value="capsolver">CapSolver</SelectItem>
-                <SelectItem value="anticaptcha">AntiCaptcha（暂未实现）</SelectItem>
-                <SelectItem value="custom">自定义（暂未实现）</SelectItem>
+                <SelectItem value="anticaptcha">AntiCaptcha</SelectItem>
+                <SelectItem value="yescaptcha">YesCaptcha</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -163,7 +163,7 @@ export function CaptchaFormDialog({ open, onOpenChange, config }: CaptchaFormDia
               placeholder={placeholders[form.type].key}
               value={form.api_key}
               onChange={(e) => setForm({ ...form, api_key: e.target.value })}
-              required={!isEdit && form.type !== "custom"}
+              required={!isEdit}
               disabled={submitting}
             />
             <p className="text-[11px] text-muted-foreground">{"从打码平台后台获取，加密存储后不会回显。"}</p>

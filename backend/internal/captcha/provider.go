@@ -1,4 +1,4 @@
-// Package captcha 提供 Cloudflare Turnstile 打码统一接口与 CapSolver / 2Captcha / AntiCaptcha / Custom 几种实现。
+// Package captcha 提供 Cloudflare Turnstile 打码统一接口与 CapSolver / 2Captcha / AntiCaptcha / YesCaptcha 四种实现。
 //
 // 后续若要拆为子包，仅需把每种实现迁出，通过 init() 调用 Register 即可。
 package captcha

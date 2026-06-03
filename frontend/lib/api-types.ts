@@ -19,7 +19,7 @@ export type CaptchaProviderType =
   | "capsolver"
   | "2captcha"
   | "anticaptcha"
-  | "custom"
+  | "yescaptcha"
 
 export type MonitorJob = "login" | "balance" | "rates"
 

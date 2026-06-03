@@ -84,7 +84,7 @@ const (
 	CaptchaCapSolver   CaptchaProviderType = "capsolver"
 	CaptchaTwoCaptcha  CaptchaProviderType = "2captcha"
 	CaptchaAntiCaptcha CaptchaProviderType = "anticaptcha"
-	CaptchaCustom      CaptchaProviderType = "custom"
+	CaptchaYesCaptcha  CaptchaProviderType = "yescaptcha"
 )
 
 // CaptchaConfig 打码平台配置。APIKeyCipher 加密保存，Extra 存放各平台差异化 JSON。
