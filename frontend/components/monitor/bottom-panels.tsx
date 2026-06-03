@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { useCaptchaConfigs, useDashboardSummary, useNotificationChannels } from "@/lib/queries"
@@ -44,31 +45,33 @@ export function AlertFeed() {
   const items = summary.data?.recent_notification_logs ?? []
 
   return (
-    <Card className="border border-border shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className="border border-border shadow-none lg:h-100">
+      <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-2">
         <CardTitle className="text-base font-semibold">{"告警动态"}</CardTitle>
         <span className="text-xs text-muted-foreground">{items.length > 0 ? `最近 ${items.length} 条` : ""}</span>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent className="min-h-0 flex-1 px-0">
         {summary.loading ? (
           <p className="px-6 py-4 text-xs text-muted-foreground">{"加载中…"}</p>
         ) : items.length === 0 ? (
           <p className="px-6 py-4 text-xs text-muted-foreground">{"暂无告警记录"}</p>
         ) : (
-          <ul className="divide-y divide-border">
-            {items.map((a) => {
-              const meta = eventMeta[a.event] ?? { icon: AlertTriangle, cls: "text-muted-foreground" }
-              return (
-                <li key={a.id} className="flex items-center justify-between gap-3 px-6 py-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <meta.icon className={cn("size-4 shrink-0", meta.cls)} />
-                    <span className="truncate text-sm text-foreground">{a.subject}</span>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(a.sent_at)}</span>
-                </li>
-              )
-            })}
-          </ul>
+          <ScrollArea type="hover" className="h-full">
+            <ul className="divide-y divide-border">
+              {items.map((a) => {
+                const meta = eventMeta[a.event] ?? { icon: AlertTriangle, cls: "text-muted-foreground" }
+                return (
+                  <li key={a.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <meta.icon className={cn("size-4 shrink-0", meta.cls)} />
+                      <span className="truncate text-sm text-foreground">{a.subject}</span>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(a.sent_at)}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </ScrollArea>
         )}
       </CardContent>
     </Card>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useTheme } from "next-themes"
-import { Activity, ChevronDown, LogOut, RefreshCw, Sun, Moon } from "lucide-react"
+import { Activity, Github, LogOut, RefreshCw, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -103,41 +103,70 @@ export function MonitorHeader() {
             {"刷新"}
           </Button>
 
+          {/* GitHub repo link */}
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="size-8 border-border bg-background text-foreground hover:bg-muted"
+                aria-label="GitHub 仓库"
+              >
+                <a
+                  href="https://github.com/worryzyy/upstream-hub"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Github className="size-3.5" />
+                </a>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {"GitHub · worryzyy/upstream-hub"}
+            </TooltipContent>
+          </Tooltip>
+
           {/* theme toggle */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="gap-1.5 border-border bg-background text-foreground hover:bg-muted"
-            aria-label="切换主题"
-          >
-            {mounted && theme === "dark" ? (
-              <>
-                <Moon className="size-3.5" />
-                {"深色"}
-              </>
-            ) : (
-              <>
-                <Sun className="size-3.5" />
-                {"浅色"}
-              </>
-            )}
-            <ChevronDown className="size-3 text-muted-foreground" />
-          </Button>
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="size-8 border-border bg-background text-foreground hover:bg-muted"
+                aria-label="切换主题"
+              >
+                {mounted && theme === "dark" ? (
+                  <Moon className="size-3.5" />
+                ) : (
+                  <Sun className="size-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {mounted && theme === "dark" ? "深色模式 · 点击切换浅色" : "浅色模式 · 点击切换深色"}
+            </TooltipContent>
+          </Tooltip>
 
           {/* logout — 鉴权关闭时整个按钮不显示 */}
           {authDisabled ? null : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={logout}
-              className="gap-1.5 border-border bg-background text-foreground hover:bg-muted"
-              aria-label="退出登录"
-              title={username ? `${username} · 退出登录` : "退出登录"}
-            >
-              <LogOut className="size-3.5" />
-              <span className="hidden sm:inline">{username ?? "退出"}</span>
-            </Button>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={logout}
+                  className="size-8 border-border bg-background text-foreground hover:bg-muted"
+                  aria-label="退出登录"
+                >
+                  <LogOut className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {username ? `${username} · 退出登录` : "退出登录"}
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

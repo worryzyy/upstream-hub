@@ -59,13 +59,13 @@ export function BalanceOverview() {
   const yMax = data.length > 0 ? niceCeil(Math.max(...data.map((d) => d.balance))) : 10
 
   return (
-    <Card className="border border-border shadow-none">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className="border border-border shadow-none lg:h-100">
+      <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-2">
         <CardTitle className="text-base font-semibold">{"余额概览"}</CardTitle>
         <span className="text-xs text-muted-foreground">{"最近 7 天"}</span>
       </CardHeader>
-      <CardContent>
-        <div className="h-60 w-full">
+      <CardContent className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 w-full flex-1">
           {trend.loading ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{"加载中…"}</div>
           ) : data.length === 0 ? (
@@ -107,7 +107,7 @@ export function BalanceOverview() {
 
         {/* per-channel chips */}
         {channels.length > 0 ? (
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-3">
+          <div className="mt-3 flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-3">
             {channels.map((c) => {
               const isFailed = !!c.last_error
               const isUnknown = c.last_balance == null
