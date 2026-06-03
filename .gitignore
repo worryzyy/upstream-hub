@@ -50,13 +50,9 @@ postgres-data/
 .claude/
 CLAUDE.md
 
-# Demo overlay —— 本地演示沙箱，永远不进 git
-Dockerfile.demo
-docker-compose.demo.yml
-Caddyfile.demo
+# Demo overlay local secrets / helper scripts
 .env.demo
 deploy-demo.sh
-backend/cmd/seed-demo/
 
 # Frontend build info
 frontend/tsconfig.tsbuildinfo

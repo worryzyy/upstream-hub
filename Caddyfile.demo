@@ -1,0 +1,15 @@
+# Caddyfile.demo —— Caddy 反向代理 + 自动 HTTPS。
+# DEMO_DOMAIN 在环境变量里给出：
+#   - 设了域名 (如 demo.example.com)：Caddy 自动签 Let's Encrypt 证书，监听 80/443
+#   - 未设 (默认 ":80")：仅监听 HTTP 80 端口，适合本地预览
+#
+# Caddy 自动 HTTPS 不强制要求 email；如果要配置 Let's Encrypt 联系邮箱，
+# 请在这里显式添加全局块，避免 DEMO_EMAIL 为空时生成无参数 email 指令。
+
+{$DEMO_DOMAIN} {
+    encode gzip
+    reverse_proxy app-demo:8418 {
+        # 长连接 / SSE / 大文件传输不缓冲
+        flush_interval -1
+    }
+}

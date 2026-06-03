@@ -48,7 +48,7 @@ services:
     ports:
       - "${UPSTREAMHUB_HTTP_PORT:-8080}:8418"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8418/healthz"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8418/healthz"]
       interval: 15s
       timeout: 5s
       retries: 5

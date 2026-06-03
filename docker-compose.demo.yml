@@ -1,0 +1,96 @@
+# docker-compose.demo.yml —— 本地演示沙箱。
+#
+# 跟主栈完全独立：独立 postgres / 独立卷 / 独立端口 / 独立 APP_SECRET。
+# 默认交给宿主机现有 nginx 反代；Caddy 只作为可选独立入口。
+#
+# 用法（本地）：
+#   docker compose -f docker-compose.demo.yml up -d --build
+#   docker compose -f docker-compose.demo.yml exec app-demo /app/seed-demo --reset --days 7
+#   # 浏览器开 http://127.0.0.1:8418
+#
+# 用法（VPS，已有 nginx）：
+#   docker compose -f docker-compose.demo.yml up -d --build
+#   nginx 反代到 http://127.0.0.1:8418
+#
+# 用法（VPS，无现有 80/443 服务，才启用 Caddy）：
+#   先把 .env.demo 里的 DEMO_DOMAIN 设成你的域名（A 记录指向 VPS IP），
+#   再 docker compose -f docker-compose.demo.yml --profile caddy up -d，
+#   Caddy 自动签证书并启 443。
+
+services:
+  postgres-demo:
+    image: postgres:16-alpine
+    container_name: upstreamhub-postgres-demo
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: upstreamhub_demo
+    volumes:
+      - postgres-demo-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile.demo
+    container_name: upstreamhub-demo
+    restart: unless-stopped
+    depends_on:
+      postgres-demo:
+        condition: service_healthy
+    environment:
+      UPSTREAMHUB_SERVER_PORT: 8418
+      UPSTREAMHUB_DATABASE_HOST: postgres-demo
+      UPSTREAMHUB_DATABASE_PORT: 5432
+      UPSTREAMHUB_DATABASE_USER: demo
+      UPSTREAMHUB_DATABASE_PASSWORD: demo
+      UPSTREAMHUB_DATABASE_NAME: upstreamhub_demo
+      UPSTREAMHUB_SERVER_MODE: release
+      UPSTREAMHUB_LOG_LEVEL: info
+      # 演示环境使用内置模拟上游：按钮会走真实后端流程，但不会请求外部 NewAPI/Sub2API。
+      UPSTREAMHUB_DEMO_CONNECTOR: ${UPSTREAMHUB_DEMO_CONNECTOR:-true}
+      # 演示环境通知只写成功日志，不向 Telegram/飞书等真实服务发请求。
+      UPSTREAMHUB_DEMO_NOTIFY: ${UPSTREAMHUB_DEMO_NOTIFY:-true}
+      APP_SECRET: demo-secret-please-do-not-reuse-in-production
+      # 默认无鉴权直接进 dashboard。想加密码就改 "true" + 设 ADMIN_PASSWORD。
+      AUTH_ENABLED: ${DEMO_AUTH_ENABLED:-false}
+      ADMIN_USERNAME: ${DEMO_ADMIN_USERNAME:-demo}
+      ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-}
+    # 只绑定宿主机本地地址，给本机 nginx 反代；不直接暴露到公网。
+    ports:
+      - "127.0.0.1:${DEMO_HTTP_PORT:-8418}:8418"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8418/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: upstreamhub-demo-caddy
+    profiles: ["caddy"]
+    restart: unless-stopped
+    depends_on:
+      app-demo:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.demo:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:-:80}
+      DEMO_EMAIL: ${DEMO_EMAIL:-}
+
+volumes:
+  postgres-demo-data:
+  caddy-data:
+  caddy-config:

@@ -26,6 +26,7 @@ import (
 	"github.com/worryzyy/upstream-hub/web"
 
 	// 注册 connector 实现。
+	_ "github.com/worryzyy/upstream-hub/internal/connector/demo"
 	_ "github.com/worryzyy/upstream-hub/internal/connector/newapi"
 	_ "github.com/worryzyy/upstream-hub/internal/connector/sub2api"
 )

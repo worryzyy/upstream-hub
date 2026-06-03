@@ -12,6 +12,8 @@ package connector
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -84,8 +86,9 @@ type Connector interface {
 type Factory func() Connector
 
 var (
-	mu       sync.RWMutex
-	registry = map[ChannelType]Factory{}
+	mu           sync.RWMutex
+	registry     = map[ChannelType]Factory{}
+	demoRegistry = map[ChannelType]Factory{}
 )
 
 // Register 由子包在 init() 中调用，注册其类型对应的 Connector 构造器。
@@ -95,13 +98,34 @@ func Register(t ChannelType, f Factory) {
 	registry[t] = f
 }
 
+// RegisterDemo registers a connector used only when UPSTREAMHUB_DEMO_CONNECTOR is enabled.
+func RegisterDemo(t ChannelType, f Factory) {
+	mu.Lock()
+	defer mu.Unlock()
+	demoRegistry[t] = f
+}
+
 // For 按 ChannelType 取一个新的 Connector。未注册返回错误。
 func For(t ChannelType) (Connector, error) {
 	mu.RLock()
 	defer mu.RUnlock()
+	if demoConnectorEnabled() {
+		if f, ok := demoRegistry[t]; ok {
+			return f(), nil
+		}
+	}
 	f, ok := registry[t]
 	if !ok {
 		return nil, fmt.Errorf("connector %q is not registered (did you forget the blank import?)", t)
 	}
 	return f(), nil
+}
+
+func demoConnectorEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("UPSTREAMHUB_DEMO_CONNECTOR"))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }

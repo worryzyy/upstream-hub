@@ -1,0 +1,41 @@
+# Dockerfile.demo —— 本地演示专用，不进 git。
+#
+# 跟主 Dockerfile 三阶段一样，但 stage 2 多 build 一个 seed-demo 二进制；
+# stage 3 把 seed-demo 也拷进来，方便 `docker compose exec app-demo /app/seed-demo` 直接用。
+
+# ---------- Stage 1: 前端 ----------
+FROM node:20-alpine AS frontend-builder
+WORKDIR /web
+RUN corepack enable && corepack prepare pnpm@10.4.0 --activate
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN pnpm install --no-frozen-lockfile
+COPY frontend/ ./
+RUN pnpm build
+
+# ---------- Stage 2: 后端 ----------
+FROM golang:1.23-alpine AS go-builder
+WORKDIR /src
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+COPY backend/ ./
+RUN rm -rf ./web/dist
+COPY --from=frontend-builder /web/dist ./web/dist
+RUN CGO_ENABLED=0 GOOS=linux go build \
+        -trimpath -ldflags="-s -w" \
+        -o /out/upstream-hub \
+        ./cmd/server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+        -trimpath -ldflags="-s -w" \
+        -o /out/seed-demo \
+        ./cmd/seed-demo
+
+# ---------- Stage 3: 运行时 ----------
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata wget && \
+    adduser -D -u 10001 upstream
+USER upstream
+WORKDIR /app
+COPY --from=go-builder /out/upstream-hub /app/upstream-hub
+COPY --from=go-builder /out/seed-demo /app/seed-demo
+EXPOSE 8418
+ENTRYPOINT ["/app/upstream-hub"]
