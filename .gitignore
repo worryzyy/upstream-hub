@@ -61,4 +61,4 @@ backend/cmd/seed-demo/
 # Frontend build info
 frontend/tsconfig.tsbuildinfo
 
-docs/
+docs/md
