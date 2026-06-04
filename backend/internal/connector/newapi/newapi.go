@@ -74,6 +74,9 @@ func (c *Client) Login(ctx context.Context, ch *connector.Channel) (*connector.A
 	if err != nil {
 		return nil, fmt.Errorf("newapi login http: %w", err)
 	}
+	if resp.IsError() {
+		return nil, fmt.Errorf("newapi login: %w", connector.HTTPStatusError(resp.StatusCode(), resp.Body()))
+	}
 	var wrapped newapiResp
 	if err := json.Unmarshal(resp.Body(), &wrapped); err != nil {
 		return nil, fmt.Errorf("newapi login decode: %w", err)
@@ -192,7 +195,7 @@ func (c *Client) getJSON(ctx context.Context, url string, session *connector.Aut
 		return nil, err
 	}
 	if resp.IsError() {
-		return nil, fmt.Errorf("status %d: %s", resp.StatusCode(), resp.String())
+		return nil, connector.HTTPStatusError(resp.StatusCode(), resp.Body())
 	}
 	var wrapped newapiResp
 	if err := json.Unmarshal(resp.Body(), &wrapped); err != nil {
