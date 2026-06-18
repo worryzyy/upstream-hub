@@ -57,11 +57,13 @@ docker compose up -d
 http://localhost:8080
 ```
 
-默认使用 `ghcr.io/worryzyy/upstream-hub:latest` 镜像。需要固定版本时，在 `.env` 里设置：
+默认使用 `worryzyy/upstream-hub:latest`（Docker Hub）镜像。需要固定版本时，在 `.env` 里设置：
 
 ```env
-UPSTREAMHUB_IMAGE_TAG=v0.1.0
+UPSTREAMHUB_IMAGE_TAG=0.1.0
 ```
+
+> GHCR 同步镜像 `ghcr.io/worryzyy/upstream-hub` 作为备份/回滚，地址等价。
 
 ## 通知渠道配置
 
