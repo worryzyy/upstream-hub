@@ -25,7 +25,7 @@ permissions:
 
 env:
   # Docker Hub 为主推地址，GHCR 同步作为备份/回滚。
-  DOCKERHUB_IMAGE: weilei888/upstream-hub
+  DOCKERHUB_IMAGE: worryzyy/upstream-hub
   GHCR_IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
