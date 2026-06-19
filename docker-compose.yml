@@ -21,7 +21,7 @@ services:
     # 优先用已发布的镜像（默认 latest，可改成 v0.1.0 等具体版本锁定）。
     # 如果指定的 image 在 Docker Hub 找不到，且本机没缓存，会回落到 build 块从源码构建。
     # 完全离线 / 强制重建：`docker compose build`；强制重新拉：`docker compose pull`。
-    image: worryzyy/upstream-hub:${UPSTREAMHUB_IMAGE_TAG:-latest}
+    image: weilei888/upstream-hub:${UPSTREAMHUB_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile

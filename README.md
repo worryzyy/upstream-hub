@@ -57,7 +57,7 @@ docker compose up -d
 http://localhost:8080
 ```
 
-默认使用 `worryzyy/upstream-hub:latest`（Docker Hub）镜像。需要固定版本时，在 `.env` 里设置：
+默认使用 `weilei888/upstream-hub:latest`（Docker Hub）镜像。需要固定版本时，在 `.env` 里设置：
 
 ```env
 UPSTREAMHUB_IMAGE_TAG=0.1.0
