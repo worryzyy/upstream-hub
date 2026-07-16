@@ -218,7 +218,7 @@ export function ChannelFormDialog({ open, onOpenChange, channel }: ChannelFormDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "编辑渠道" : "新增渠道"}</DialogTitle>
           <DialogDescription>
@@ -226,7 +226,7 @@ export function ChannelFormDialog({ open, onOpenChange, channel }: ChannelFormDi
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="min-w-0 space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="name">渠道名</Label>
             <Input
@@ -373,7 +373,7 @@ export function ChannelFormDialog({ open, onOpenChange, channel }: ChannelFormDi
                       value={form.newapi_cookie}
                       onChange={(e) => setForm({ ...form, newapi_cookie: e.target.value })}
                       rows={3}
-                      className="text-xs font-mono"
+                      className="field-sizing-fixed min-w-0 max-w-full resize-y text-xs font-mono"
                       disabled={submitting}
                     />
                   </div>
@@ -412,7 +412,7 @@ export function ChannelFormDialog({ open, onOpenChange, channel }: ChannelFormDi
                       setForm({ ...form, sub2api_access_token: e.target.value })
                     }
                     rows={3}
-                    className="text-xs font-mono"
+                    className="field-sizing-fixed min-w-0 max-w-full resize-y text-xs font-mono"
                     disabled={submitting}
                   />
                 </div>

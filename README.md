@@ -18,7 +18,7 @@
 - 余额汇总和低余额提醒
 - 模型倍率监控和变化记录
 - Cloudflare Turnstile 打码支持
-- Telegram、Webhook、邮件、企业微信、钉钉、飞书通知
+- Telegram、Webhook、邮件、企业微信、钉钉、飞书、Bark 通知
 
 ## 启动方式
 
@@ -148,6 +148,16 @@ UPSTREAMHUB_IMAGE_TAG=0.1.0
 
 - `webhook_url` 必填。
 - `secret` 可选，启用“签名校验”时填写。
+
+### Bark
+
+```json
+{
+	"url": "https://api.day.app/你的Key/"
+}
+```
+
+- `url` 必填。复制 Bark App 提供的推送地址，删除末尾的示例推送内容后填写即可。
 
 ### 订阅规则
 
