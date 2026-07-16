@@ -122,8 +122,13 @@ export function useDashboardSummary() {
   return useApi<DashboardSummary>("/dashboard/summary")
 }
 
-export function useBalanceTrend(days = 7) {
-  return useApi<BalanceTrendPoint[]>(`/dashboard/balance-trend?days=${days}`)
+export type BalanceTrendRange = "7d" | "24h"
+
+export function useBalanceTrend(range: BalanceTrendRange = "7d") {
+  const path = range === "24h"
+    ? "/dashboard/balance-trend?bucket=hour&hours=24"
+    : "/dashboard/balance-trend?days=7"
+  return useApi<BalanceTrendPoint[]>(path)
 }
 
 export function useChannels() {

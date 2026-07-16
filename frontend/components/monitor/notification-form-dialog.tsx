@@ -43,7 +43,7 @@ interface ConfigState {
   // telegram
   bot_token: string
   chat_id: string
-  // webhook
+  // webhook / bark
   url: string
   method: string
   headers: string // 原始 JSON 字符串，留空 = 不传
@@ -162,6 +162,8 @@ function buildConfigByType(type: NotificationChannelType, cfg: ConfigState): str
       if (cfg.secret) body.secret = cfg.secret
       return JSON.stringify(body)
     }
+    case "bark":
+      return JSON.stringify({ url: cfg.url.trim() })
   }
 }
 
@@ -231,6 +233,8 @@ export function NotificationFormDialog({
             return !!form.cfg.url
           case "email":
             return !!(form.cfg.host || form.cfg.from || form.cfg.to)
+          case "bark":
+            return !!form.cfg.url
           default:
             return !!form.cfg.webhook_url
         }
@@ -319,6 +323,7 @@ export function NotificationFormDialog({
                 <SelectItem value="wecom">企业微信</SelectItem>
                 <SelectItem value="dingtalk">钉钉</SelectItem>
                 <SelectItem value="feishu">飞书</SelectItem>
+                <SelectItem value="bark">Bark</SelectItem>
               </SelectContent>
             </Select>
             {isEdit ? (
@@ -586,6 +591,27 @@ function ConfigFields({ type, cfg, updateCfg, disabled, isEdit }: ConfigFieldsPr
             id="em-tls"
             checked={cfg.use_tls}
             onCheckedChange={(v) => updateCfg({ use_tls: v })}
+            disabled={disabled}
+          />
+        </div>
+        {hint}
+      </div>
+    )
+  }
+
+  if (type === "bark") {
+    return (
+      <div className="space-y-2 rounded-lg border border-border p-3">
+        <p className="text-xs font-medium text-muted-foreground">Bark</p>
+        <div className="space-y-1.5">
+          <Label htmlFor="bark-url">推送地址</Label>
+          <Input
+            id="bark-url"
+            type="url"
+            placeholder="https://api.day.app/你的Key/"
+            value={cfg.url}
+            onChange={(e) => updateCfg({ url: e.target.value })}
+            required={!isEdit}
             disabled={disabled}
           />
         </div>

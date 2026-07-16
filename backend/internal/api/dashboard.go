@@ -90,6 +90,20 @@ func dashboardSummary(c *gin.Context, d *Deps) {
 }
 
 func dashboardBalanceTrend(c *gin.Context, d *Deps) {
+	if c.DefaultQuery("bucket", "day") == "hour" {
+		hours, _ := strconv.Atoi(c.DefaultQuery("hours", "24"))
+		if hours <= 0 {
+			hours = 24
+		}
+		trend, err := d.Rates.AggregateBalanceTrendHourly(hours)
+		if err != nil {
+			fail(c, http.StatusInternalServerError, err)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": trend})
+		return
+	}
+
 	days, _ := strconv.Atoi(c.DefaultQuery("days", "7"))
 	if days <= 0 {
 		days = 7

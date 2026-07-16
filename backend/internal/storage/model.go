@@ -153,6 +153,7 @@ const (
 	NotifyWecom    NotificationChannelType = "wecom"
 	NotifyDingTalk NotificationChannelType = "dingtalk"
 	NotifyFeishu   NotificationChannelType = "feishu"
+	NotifyBark     NotificationChannelType = "bark"
 )
 
 // NotificationChannel 通知渠道配置。ConfigCipher 加密保存 JSON 配置（含 token / webhook url / 密码等）。

@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useBalanceTrend, useDashboardSummary } from "@/lib/queries"
+import { useBalanceTrend, useDashboardSummary, type BalanceTrendRange } from "@/lib/queries"
 import { money } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +33,21 @@ function formatDay(iso: string) {
   return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
+function formatHour(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const now = new Date()
+  const time = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })
+  if (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  ) {
+    return time
+  }
+  return `${d.getMonth() + 1}/${d.getDate()} ${time}`
+}
+
 interface TooltipPayloadItem { value: number }
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadItem[]; label?: string }) {
@@ -47,11 +63,12 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 export function BalanceOverview() {
-  const trend = useBalanceTrend(7)
+  const [range, setRange] = useState<BalanceTrendRange>("7d")
+  const trend = useBalanceTrend(range)
   const summary = useDashboardSummary()
 
   const data = (trend.data ?? []).map((p) => ({
-    day: formatDay(p.day),
+    day: range === "24h" ? formatHour(p.day) : formatDay(p.day),
     balance: p.balance,
   }))
 
@@ -62,7 +79,26 @@ export function BalanceOverview() {
     <Card className="border border-border shadow-none lg:h-100">
       <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-2">
         <CardTitle className="text-base font-semibold">{"余额概览"}</CardTitle>
-        <span className="text-xs text-muted-foreground">{"最近 7 天"}</span>
+        <div className="inline-flex shrink-0 rounded-md border border-border bg-muted/30 p-0.5">
+          {([
+            ["7d", "7 天"],
+            ["24h", "24 小时"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRange(value)}
+              className={cn(
+                "h-6 rounded px-2 text-xs transition-colors",
+                range === value
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col">
         <div className="min-h-0 w-full flex-1">
@@ -70,7 +106,7 @@ export function BalanceOverview() {
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{"加载中…"}</div>
           ) : data.length === 0 ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-              {"暂无余额采样，等待下次扫描或手动刷新"}
+              {range === "24h" ? "暂无 24 小时余额采样，等待下次扫描或手动刷新" : "暂无余额采样，等待下次扫描或手动刷新"}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
