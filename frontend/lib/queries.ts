@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/api"
 import { useRefreshTick } from "@/lib/refresh-context"
 import type {
@@ -37,6 +37,13 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>()
 const CACHE_TTL_MS = 800
 
+interface ApiState<T> {
+  path: string | null
+  data: T | null
+  loading: boolean
+  error: string | null
+}
+
 function cacheKey(path: string, tick: number, bump: number) {
   return `${path}#${tick}#${bump}`
 }
@@ -69,51 +76,60 @@ function fetchShared<T>(path: string, key: string): Promise<T> {
  * useApi 通用数据获取 hook（stale-while-revalidate）。
  * - 首次加载：loading = true，组件显示加载占位
  * - 后续刷新（refresh tick / refetch）：保留旧 data 继续展示，loading 不切回 true，后台静默拉新
+ * - 请求路径变化：清空旧 data，避免把上一条查询的结果展示成新查询
  * - 同 URL + 同 tick 的并发调用共享一次请求
  */
 function useApi<T>(path: string | null): QueryState<T> {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState<boolean>(path !== null)
-  const [error, setError] = useState<string | null>(null)
+  const [state, setState] = useState<ApiState<T>>({
+    path,
+    data: null,
+    loading: path !== null,
+    error: null,
+  })
   const [bump, setBump] = useState(0)
   const globalTick = useRefreshTick()
 
-  // 已经拿到过数据吗？用 ref 防止 setLoading 写回触发额外 effect。
-  const hasDataRef = useRef(false)
-
   useEffect(() => {
     if (path === null) {
-      setLoading(false)
+      setState({ path: null, data: null, loading: false, error: null })
       return
     }
     let cancelled = false
-    // 关键：只有第一次（还没拿到过数据）才展示 loading；后续 polling / refetch 静默进行，
-    // 避免组件因 loading=true 短暂消失再回来造成"闪屏"。
-    if (!hasDataRef.current) setLoading(true)
-    setError(null)
+    setState((previous) => {
+      if (previous.path !== path) {
+        return { path, data: null, loading: true, error: null }
+      }
+      if (previous.data === null) {
+        return { ...previous, loading: true, error: null }
+      }
+      return previous.error === null ? previous : { ...previous, error: null }
+    })
     fetchShared<T>(path, cacheKey(path, globalTick, bump))
       .then((d) => {
         if (cancelled) return
-        hasDataRef.current = true
-        setData(d)
+        setState({ path, data: d, loading: false, error: null })
       })
       .catch((e: Error) => {
         if (cancelled) return
-        setError(e.message)
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLoading(false)
+        setState((previous) => (
+          previous.path === path
+            ? { ...previous, loading: false, error: e.message }
+            : previous
+        ))
       })
     return () => {
       cancelled = true
     }
   }, [path, bump, globalTick])
 
+  const current = state.path === path
+    ? state
+    : { path, data: null, loading: path !== null, error: null }
+
   return {
-    data,
-    loading,
-    error,
+    data: current.data,
+    loading: current.loading,
+    error: current.error,
     refetch: () => setBump((b) => b + 1),
   }
 }
